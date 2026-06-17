@@ -1,0 +1,50 @@
+{
+  "name": "@ondex/dapp-client",
+  "version": "0.1.0",
+  "description": "Public TypeScript helpers for connecting XRPL dApps to Ondex.",
+  "type": "module",
+  "packageManager": "pnpm@11.1.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ondexlabs/ondex-dapp-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ondexlabs/ondex-dapp-client/issues"
+  },
+  "homepage": "https://github.com/ondexlabs/ondex-dapp-client#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc --noEmit -p tsconfig.json",
+    "test": "pnpm run build && node --test test/*.test.mjs",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "prepack": "pnpm run build",
+    "prepublishOnly": "pnpm run lint && pnpm test"
+  },
+  "keywords": [
+    "ondex",
+    "xrpl",
+    "walletconnect",
+    "xrp",
+    "dapp"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
