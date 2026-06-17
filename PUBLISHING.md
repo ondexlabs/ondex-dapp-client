@@ -1,12 +1,13 @@
 # Publishing
 
-The npm token must never be committed. Use one of these two paths.
+The npm token must never be committed. GitHub Actions releases should use npm Trusted Publishing by default.
 
 Current status:
 
 - `@ondex/dapp-client@0.1.0` was published from `ondexlabs/ondex-dapp-client` tag `v0.1.0` on 2026-06-17.
 - The first publish used a temporary npm token with `bypass_2fa: true`.
-- Next releases should use npm Trusted Publishing, then remove the `NPM_TOKEN` GitHub Actions secret and revoke temporary publish tokens.
+- Trusted Publishing is configured for GitHub Actions, and `.github/workflows/publish.yml` is OIDC-only.
+- Temporary npm tokens used for the first publish should be revoked in npm.
 
 ## Repository model
 
@@ -33,7 +34,7 @@ pnpm publish --access public
 
 ## Trusted Publishing
 
-Configure this in npm package settings for `@ondex/dapp-client`:
+The npm package settings for `@ondex/dapp-client` should stay configured as:
 
 ```text
 Provider: GitHub Actions
@@ -44,7 +45,7 @@ Environment name: empty
 Allowed actions: npm publish
 ```
 
-The workflow already grants `id-token: write`; once npm accepts this publisher, remove the `NODE_AUTH_TOKEN` publish env block from `.github/workflows/publish.yml`, delete the `NPM_TOKEN` GitHub Actions secret, and revoke temporary npm tokens.
+The workflow grants `id-token: write` and does not require `NODE_AUTH_TOKEN` or an `NPM_TOKEN` GitHub Actions secret.
 
 ## Token-Based Publish Fallback
 
