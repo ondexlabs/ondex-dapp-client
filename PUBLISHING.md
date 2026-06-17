@@ -12,8 +12,9 @@ The npm token must never be committed. Use one of these two paths.
 ## Local publish
 
 1. Put the real npm token in `.env.publish`.
-2. Make sure `.npmrc.publish` exists. It is ignored by git and uses `NPM_TOKEN`.
-3. Load the token and publish:
+2. The token must have package/scope read-write access and must either bypass 2FA for write actions or be used with an interactive one-time password.
+3. Make sure `.npmrc.publish` exists. It is ignored by git and uses `NPM_TOKEN`.
+4. Load the token and publish:
 
 ```bash
 set -a
@@ -27,7 +28,8 @@ pnpm publish --access public
 ## GitHub Actions publish
 
 1. Create the public repo as `ondexlabs/ondex-dapp-client`.
-2. Add the npm token as a repository secret named `NPM_TOKEN`.
-3. Push a tag such as `v0.1.0`.
+2. Add an npm granular access token as a repository secret named `NPM_TOKEN`.
+3. The token must be allowed to publish packages under the `@ondex` scope and must have "Bypass two-factor authentication" enabled for write actions. Otherwise npm will reject the non-interactive workflow with an OTP error.
+4. Push a tag such as `v0.1.0`.
 
 Do not paste npm or GitHub tokens into issues, commits, pull requests, logs, or chat.
