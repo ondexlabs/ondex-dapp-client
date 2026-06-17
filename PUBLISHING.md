@@ -30,6 +30,17 @@ pnpm publish --access public
 1. Create the public repo as `ondexlabs/ondex-dapp-client`.
 2. Add an npm granular access token as a repository secret named `NPM_TOKEN`.
 3. The token must be allowed to publish packages under the `@ondex` scope and must have "Bypass two-factor authentication" enabled for write actions. Otherwise npm will reject the non-interactive workflow with an OTP error.
-4. Push a tag such as `v0.1.0`.
+4. Verify the token metadata before rerunning a release:
+
+```bash
+set -a
+source .env.publish
+set +a
+NPM_CONFIG_USERCONFIG=.npmrc.publish npm token list --json
+```
+
+The selected token should report `bypass_2fa: true`.
+
+5. Push a tag such as `v0.1.0`.
 
 Do not paste npm or GitHub tokens into issues, commits, pull requests, logs, or chat.
