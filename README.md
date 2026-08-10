@@ -93,3 +93,23 @@ Always verify the returned public key derives to the returned XRPL address, then
 - Methods: `xrpl_signTransaction`, `xrpl_signTransactionFor`, `ondex_signIn`
 
 Batch signing is intentionally not exposed. Payment-critical apps must verify final ledger state after submission.
+
+## x402 payments
+
+Call `ondexX402Fetch` directly from a click or submit handler. It starts one document-bound Ondex interaction, preserves the page's cookies, authorization, body, method, and credentials, and performs at most one paid retry. It never patches global `fetch`.
+
+```ts
+import { ondexX402Fetch } from "@ondex/dapp-client";
+
+button.addEventListener("click", async () => {
+  const response = await ondexX402Fetch("https://api.example.com/report", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ topic: "XRPL" }),
+  });
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+});
+```
+
+Merchants must expose `PAYMENT-REQUIRED` and `PAYMENT-RESPONSE` response headers through CORS and allow the `PAYMENT-SIGNATURE` request header. A second `402`, a post-authorization error, or a missing settlement response never triggers another signature; use the returned intent status and validated XRPL hash for reconciliation.

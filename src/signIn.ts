@@ -39,6 +39,8 @@ export type VerifyOndexSignInResult =
   | { valid: false; reason: string };
 
 const MAX_STATEMENT_LENGTH = 500;
+const DEFAULT_LIFETIME_SECONDS = 10 * 60;
+const MAX_LIFETIME_SECONDS = 24 * 60 * 60;
 const NONCE_RE = /^[A-Za-z0-9._~:-]{8,256}$/;
 const CONTROL_CHAR_RE = /[\u0000-\u001F\u007F]/;
 
@@ -47,9 +49,11 @@ export function buildOndexSignInRequest(
   options: { lifetimeSeconds?: number; now?: Date } = {},
 ): NormalizedOndexSignInRequest {
   const issuedAt = parseIsoDate(params.issuedAt ?? (options.now ?? new Date()).toISOString());
+  const lifetimeSeconds = normalizeLifetimeSeconds(options.lifetimeSeconds ?? DEFAULT_LIFETIME_SECONDS);
   const expiresAt = params.expiresAt
     ? parseIsoDate(params.expiresAt)
-    : new Date(Date.parse(issuedAt) + (options.lifetimeSeconds ?? 10 * 60) * 1000).toISOString();
+    : new Date(Date.parse(issuedAt) + lifetimeSeconds * 1000).toISOString();
+  if (Date.parse(expiresAt) <= Date.parse(issuedAt)) throw new Error("invalid_expiry");
 
   const request = {
     method: ONDEX_SIGN_IN_METHOD,
@@ -150,7 +154,13 @@ function normalizeDomain(value: string): string {
   }
 
   hostname = hostname.toLowerCase().replace(/\.$/, "");
-  if (hostname === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return hostname;
+  if (hostname === "localhost") return hostname;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) {
+    if (hostname.split(".").every((part) => Number(part) >= 0 && Number(part) <= 255 && String(Number(part)) === part)) {
+      return hostname;
+    }
+    throw new Error("invalid_domain");
+  }
   if (hostname.length > 253 || !hostname.includes(".")) throw new Error("invalid_domain");
   if (!hostname.split(".").every((label) => (
     label.length >= 1 &&
@@ -178,6 +188,13 @@ function parseIsoDate(value: string): string {
   const parsedMs = Date.parse(value);
   if (!Number.isFinite(parsedMs)) throw new Error("invalid_date");
   return new Date(parsedMs).toISOString();
+}
+
+function normalizeLifetimeSeconds(value: number): number {
+  if (!Number.isFinite(value) || value <= 0 || value > MAX_LIFETIME_SECONDS) {
+    throw new Error("invalid_lifetime");
+  }
+  return value;
 }
 
 function normalizeOptionalStatement(value: string | undefined): string | undefined {
