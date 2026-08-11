@@ -5,6 +5,7 @@ The npm token must never be committed. GitHub Actions releases should use npm Tr
 Current status:
 
 - `@ondex/dapp-client@0.1.0` was published from `ondexlabs/ondex-dapp-client` tag `v0.1.0` on 2026-06-17.
+- `@ondex/dapp-client@0.2.0` was published with provenance from tag `v0.2.0` on 2026-08-11 using the approved token fallback after the public repository was recreated.
 - The first publish used a temporary npm token with `bypass_2fa: true`.
 - Trusted Publishing is configured for GitHub Actions, and `.github/workflows/publish.yml` is OIDC-only.
 - Temporary npm tokens used for the first publish should be revoked in npm.
@@ -33,6 +34,8 @@ pnpm publish --access public
 ```
 
 ## Trusted Publishing
+
+Before the next release, re-save the npm Trusted Publisher settings so npm binds the recreated GitHub repository identity.
 
 The npm package settings for `@ondex/dapp-client` should stay configured as:
 
