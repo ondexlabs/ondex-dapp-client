@@ -23,7 +23,12 @@ export type PollOndexPayloadStatusOptions = OndexPayloadClientOptions & {
 };
 
 const TERMINAL_PAYLOAD_STATUSES = ["rejected", "signed", "submitted", "expired", "failed"] as const;
+const ALL_PAYLOAD_STATUSES = ["created", "opened", ...TERMINAL_PAYLOAD_STATUSES] as const;
 const MAX_TX_JSON_BYTES = 16 * 1024;
+const MAX_DAPP_NAME_LENGTH = 120;
+const MAX_EXPIRES_IN_SECONDS = 24 * 60 * 60;
+const CLASSIC_ADDRESS_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
+const CONTROL_CHAR_RE = /[\u0000-\u001F\u007F]/;
 
 export async function createOndexPayload(
   request: OndexPayloadRequest,
@@ -77,6 +82,9 @@ export async function pollOndexPayloadStatus(
   const intervalMs = options.intervalMs ?? 1500;
   const timeoutMs = options.timeoutMs ?? 5 * 60 * 1000;
   const terminalStatuses = options.terminalStatuses ?? TERMINAL_PAYLOAD_STATUSES;
+  assertPositiveFinite(intervalMs, "intervalMs");
+  assertPositiveFinite(timeoutMs, "timeoutMs");
+  assertTerminalStatuses(terminalStatuses);
   const deadline = Date.now() + timeoutMs;
 
   while (true) {
@@ -106,10 +114,11 @@ export function resolveOndexPayloadStatusUrl(
 
 export function normalizePushServerUrl(value = ONDEX_PUSH_SERVER_URL): string {
   const url = new URL(value);
-  if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
-    throw new Error("Ondex push server URLs must use https outside localhost.");
+  const isLoopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  if (url.protocol === "https:" || (url.protocol === "http:" && isLoopback)) {
+    return url.origin;
   }
-  return url.origin;
+  throw new Error("Ondex push server URLs must use https outside localhost.");
 }
 
 function assertPayloadRequest(request: OndexPayloadRequest): void {
@@ -122,8 +131,46 @@ function assertPayloadRequest(request: OndexPayloadRequest): void {
   if (byteLength(JSON.stringify(request.tx_json)) > MAX_TX_JSON_BYTES) {
     throw new Error("Payload tx_json is too large.");
   }
+  if (request.options !== undefined) {
+    if (!isRecord(request.options)) throw new Error("Payload options must be an object.");
+    assertOptionalBoolean(request.options.autofill, "options.autofill");
+    assertOptionalBoolean(request.options.submit, "options.submit");
+  }
+  if (request.requestedAccount !== undefined) {
+    assertClassicAddress(request.requestedAccount, "requestedAccount");
+  }
+  if (request.expiresInSeconds !== undefined) {
+    if (
+      !Number.isInteger(request.expiresInSeconds) ||
+      request.expiresInSeconds <= 0 ||
+      request.expiresInSeconds > MAX_EXPIRES_IN_SECONDS
+    ) {
+      throw new Error("Payload expiresInSeconds must be between 1 and 86400.");
+    }
+  }
+  if (request.dapp?.name !== undefined) {
+    assertBoundedText(request.dapp.name, "dapp.name", MAX_DAPP_NAME_LENGTH);
+  }
   for (const value of [request.returnUrl, request.dapp?.url, request.dapp?.icon]) {
     if (value !== undefined) assertHttpsUrl(value);
+  }
+}
+
+function assertOptionalBoolean(value: unknown, label: string): void {
+  if (value !== undefined && typeof value !== "boolean") {
+    throw new Error(`Payload ${label} must be boolean.`);
+  }
+}
+
+function assertClassicAddress(value: string, label: string): void {
+  if (value.trim() !== value || !CLASSIC_ADDRESS_RE.test(value)) {
+    throw new Error(`Payload ${label} must be a classic XRPL address.`);
+  }
+}
+
+function assertBoundedText(value: string, label: string, maxLength: number): void {
+  if (typeof value !== "string" || value.trim() !== value || !value || value.length > maxLength || CONTROL_CHAR_RE.test(value)) {
+    throw new Error(`Payload ${label} is invalid.`);
   }
 }
 
@@ -157,6 +204,22 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
       reject(signal.reason);
     }, { once: true });
   });
+}
+
+function assertPositiveFinite(value: number, label: string): void {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a positive finite number.`);
+  }
+}
+
+function assertTerminalStatuses(statuses: readonly OndexPayloadStatus[]): void {
+  if (!Array.isArray(statuses) || statuses.length === 0) {
+    throw new Error("terminalStatuses must contain at least one status.");
+  }
+  const allowed = new Set<string>(ALL_PAYLOAD_STATUSES);
+  if (!statuses.every((status) => allowed.has(status))) {
+    throw new Error("terminalStatuses contains an unknown payload status.");
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

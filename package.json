@@ -1,9 +1,9 @@
 {
   "name": "@ondex/dapp-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Public TypeScript helpers for connecting XRPL dApps to Ondex.",
   "type": "module",
-  "packageManager": "pnpm@11.1.1",
+  "packageManager": "pnpm@11.18.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -33,6 +33,7 @@
     "type-check": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm run build && node --test test/*.test.mjs",
     "lint": "tsc --noEmit -p tsconfig.json",
+    "example:x402-merchant": "node examples/x402-merchant.mjs",
     "prepack": "pnpm run build",
     "prepublishOnly": "pnpm run lint && pnpm test"
   },
@@ -45,6 +46,11 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@hono/node-server": "2.0.12",
+    "@x402/core": "2.21.0",
+    "@x402/hono": "2.21.0",
+    "@x402/xrpl": "2.21.0",
+    "hono": "4.12.30",
     "typescript": "^5.6.0"
   }
 }
