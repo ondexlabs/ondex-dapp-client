@@ -11,7 +11,7 @@ Current status:
 
 ## Repository model
 
-- The main Ondex product can stay in the private GitHub repo under `lucholabs`.
+- The main Ondex product can stay in a separate private repository.
 - This SDK should be published from a separate public repo under `ondexlabs`, using `ondexlabs/ondex-dapp-client`.
 - The npm package is scoped to the npm org as `@ondex/dapp-client`.
 - Publish from the public repo so npm provenance, repository links, issues, and docs all point to a public source.
