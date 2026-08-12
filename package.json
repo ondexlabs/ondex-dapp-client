@@ -1,6 +1,6 @@
 {
   "name": "@ondex/dapp-client",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Public TypeScript helpers for connecting XRPL dApps to Ondex.",
   "type": "module",
   "packageManager": "pnpm@11.18.0",

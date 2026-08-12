@@ -41,6 +41,7 @@ assert.throws(
 {
   const required = {
     x402Version: 2,
+    error: 'Payment required',
     resource: { url: 'https://merchant.example/report' },
     accepts: [{ scheme: 'exact', network: 'xrpl:0', amount: '1', asset: 'XRP', payTo: 'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe', maxTimeoutSeconds: 60, extra: { areFeesSponsored: false } }],
   };
@@ -50,9 +51,10 @@ assert.throws(
   const calls = [];
   const provider = {
     beginInteraction: async () => ({ interactionToken: 'interaction', expiresAt: new Date(Date.now() + 10_000).toISOString() }),
-    createPaymentPayload: async ({ paymentRequired }) => {
+    createPaymentPayload: async ({ paymentRequired, operationId }) => {
       signatures += 1;
       assert.deepEqual(paymentRequired, required);
+      assert.match(operationId, /^[0-9a-f-]{36}$/i);
       return { intentId: 'intent-1', paymentPayload: { x402Version: 2, resource: required.resource, accepted: required.accepts[0], payload: { signedTxBlob: 'ABCD' } } };
     },
     getIntentStatus: async () => ({ expectedTxHash: 'A'.repeat(64), payer: 'rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe' }),

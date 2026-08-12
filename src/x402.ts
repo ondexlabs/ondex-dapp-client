@@ -1,5 +1,6 @@
 export type X402PaymentRequired = {
   x402Version: 2;
+  error?: string;
   resource: { url: string; description?: string; mimeType?: string; serviceName?: string; tags?: string[]; iconUrl?: string };
   accepts: Array<Record<string, unknown>>;
   extensions?: Record<string, unknown>;
@@ -7,9 +8,9 @@ export type X402PaymentRequired = {
 
 export type X402PaymentPayload = {
   x402Version: 2;
-  resource: X402PaymentRequired['resource'];
+  resource?: X402PaymentRequired['resource'];
   accepted: Record<string, unknown>;
-  payload: { signedTxBlob: string };
+  payload: { signedTxBlob: string; invoiceId?: string };
   extensions?: Record<string, unknown>;
 };
 
@@ -18,9 +19,9 @@ export type OndexX402IntentStatus = { expectedTxHash?: string | null; payer?: st
 export type OndexX402Provider = {
   getCapabilities(): Promise<Record<string, unknown>>;
   beginInteraction(): Promise<{ interactionToken: string; expiresAt: string }>;
-  createPaymentPayload(input: { paymentRequired: unknown; interactionToken: string }): Promise<{ intentId: string; paymentPayload: X402PaymentPayload }>;
+  createPaymentPayload(input: { paymentRequired: unknown; interactionToken: string; operationId: string }): Promise<{ intentId: string; paymentPayload: X402PaymentPayload }>;
   getIntentStatus(input: { intentId: string }): Promise<OndexX402IntentStatus>;
-  reportResourceOutcome(input: { intentId: string; status: number | 'network_error' | 'cors_error'; hasPaymentResponse: boolean }): Promise<void>;
+  reportResourceOutcome(input: { intentId: string; status: number | 'network_error' | 'cors_error'; hasPaymentResponse: boolean; paymentResponseValid?: boolean }): Promise<void>;
 };
 
 export type OndexX402FetchOptions = {
@@ -113,6 +114,7 @@ export async function ondexX402Fetch(input: RequestInfo | URL, init: RequestInit
   if ((globalThis as typeof globalThis & { document?: { prerendering?: boolean } }).document?.prerendering) throw new Error('x402_prerender_blocked');
   let retryTemplate: Request;
   try { retryTemplate = request.clone(); } catch { throw new Error('x402_request_body_not_replayable'); }
+  const operationId = crypto.randomUUID();
   const interactionPromise = provider.beginInteraction();
   const interaction = await interactionPromise;
   const fetchImpl = options.fetch ?? globalThis.fetch;
@@ -122,7 +124,7 @@ export async function ondexX402Fetch(input: RequestInfo | URL, init: RequestInit
   if (!paymentRequiredHeader) return first;
   const paymentRequired = validatePaymentRequired(decodeHeader(paymentRequiredHeader));
   if (first.url && first.url !== retryTemplate.url) throw new Error('x402_redirect_before_payment');
-  const created = await provider.createPaymentPayload({ paymentRequired, interactionToken: interaction.interactionToken });
+  const created = await provider.createPaymentPayload({ paymentRequired, interactionToken: interaction.interactionToken, operationId });
   const headers = new Headers(retryTemplate.headers);
   headers.set('PAYMENT-SIGNATURE', encodeHeader(created.paymentPayload));
   headers.delete('Access-Control-Expose-Headers');
@@ -137,8 +139,13 @@ export async function ondexX402Fetch(input: RequestInfo | URL, init: RequestInit
   const paymentResponseHeader = singleHeader(paid.headers, 'PAYMENT-RESPONSE');
   const status: OndexX402IntentStatus = await provider.getIntentStatus({ intentId: created.intentId }).catch(() => ({}));
   if (paymentResponseHeader) {
-    validateSettlementResponse(decodeHeader(paymentResponseHeader), created.paymentPayload.accepted.network, status.expectedTxHash, status.payer ?? status.walletAddress);
+    try {
+      validateSettlementResponse(decodeHeader(paymentResponseHeader), created.paymentPayload.accepted.network, status.expectedTxHash, status.payer ?? status.walletAddress);
+    } catch (error) {
+      await provider.reportResourceOutcome({ intentId: created.intentId, status: paid.status, hasPaymentResponse: true, paymentResponseValid: false }).catch(() => undefined);
+      throw error;
+    }
   }
-  await provider.reportResourceOutcome({ intentId: created.intentId, status: paid.status, hasPaymentResponse: Boolean(paymentResponseHeader) }).catch(() => undefined);
+  await provider.reportResourceOutcome({ intentId: created.intentId, status: paid.status, hasPaymentResponse: Boolean(paymentResponseHeader), ...(paymentResponseHeader ? { paymentResponseValid: true } : {}) }).catch(() => undefined);
   return paid;
 }
