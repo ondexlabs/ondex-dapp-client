@@ -6,10 +6,10 @@ Current status:
 
 - `@ondex/dapp-client@0.1.0` was published from `ondexlabs/ondex-dapp-client` tag `v0.1.0` on 2026-06-17.
 - `@ondex/dapp-client@0.2.0` was published with provenance from tag `v0.2.0` on 2026-08-11 using the approved token fallback after the public repository was recreated.
-- `@ondex/dapp-client@0.3.0` adds operation-scoped x402 requests, T54 invoice payload support, and explicit settlement-response validity reporting.
+- `@ondex/dapp-client@0.3.0` was published from tag `v0.3.0` on 2026-08-13 with the approved local token fallback after npm rejected the recreated repository's OIDC identity.
 - The first publish used a temporary npm token with `bypass_2fa: true`.
-- Trusted Publishing is configured for GitHub Actions, and `.github/workflows/publish.yml` is OIDC-only.
-- Temporary npm tokens used for the first publish should be revoked in npm.
+- `.github/workflows/publish.yml` is OIDC-only, but npm Trusted Publishing must be re-saved for the recreated repository before the next release.
+- Temporary npm tokens used for fallback publishing should be revoked in npm after Trusted Publishing is restored.
 
 ## Repository model
 
